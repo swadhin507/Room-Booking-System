@@ -1,4 +1,4 @@
-package com.project.dao;
+package com.project.repository;
 
 import com.project.entities.Guest;
 import org.springframework.data.jpa.repository.JpaRepository;

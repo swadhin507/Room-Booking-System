@@ -20,6 +20,8 @@ public class BookingRequestDto {
 
     @NotNull
     private LocalDate checkIn;
+
+    @NotNull
     private LocalDate checkOut;
 
 }

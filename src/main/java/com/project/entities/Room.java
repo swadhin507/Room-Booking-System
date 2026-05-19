@@ -1,9 +1,7 @@
 package com.project.entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import com.project.enums.RoomStatus;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,13 +16,15 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Positive
     @NotNull
     private Integer roomNumber;
 
-    @NotBlank
+    @NotBlank(message = "Room type is required")
     private String type;
 
-    @NotBlank
-    private String  status;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private RoomStatus status;
 
 }

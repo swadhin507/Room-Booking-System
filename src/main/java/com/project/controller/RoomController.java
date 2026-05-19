@@ -1,7 +1,7 @@
 package com.project.controller;
 
 import com.project.entities.Room;
-import com.project.services.RoomService;
+import com.project.service.RoomService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,15 +14,16 @@ import java.util.List;
 @RequestMapping("/room")
 public class RoomController {
 
+
+    private final RoomService roomService;
     @Autowired
-    private RoomService roomService;
+    public RoomController(RoomService roomService) {
+        this.roomService = roomService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Room>> getAllRooms(){
        List<Room> list = roomService.getAllRooms();
-       if(list.isEmpty()){
-           return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-       }
            return ResponseEntity.ok(list);
     }
     @GetMapping("/{id}")
@@ -32,38 +33,26 @@ public class RoomController {
     }
 
     @PostMapping
-    public ResponseEntity<Room> addRoom(@Valid @RequestBody Room room){
-        try{
-            Room r = this.roomService.addRoom(room);
+    public ResponseEntity<List<Room>> addRoom(@Valid @RequestBody List<Room> room){
+            List<Room> r = this.roomService.addRoom(room);
             return ResponseEntity.status(HttpStatus.CREATED).body(r);
-        }catch (Exception e){
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
 
     }
     @DeleteMapping("/{id}")
-    public ResponseEntity<Room> deleteRoom(@PathVariable long id){
-      return ResponseEntity.ok(roomService.getRoomById(id));
+    public ResponseEntity<Void> deleteRoom(@PathVariable long id){
+        roomService.deleteRoom(id);
+      return ResponseEntity.noContent().build();
     }
     @DeleteMapping
     public ResponseEntity<Void> deleteAll(){
-        try{
+
             this.roomService.deleteAll();
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        }catch(Exception e){
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
     }
     @PutMapping("/{id}")
-    public ResponseEntity<Room> updateRoom(@RequestBody Room room, @PathVariable long id){
-        try {
+    public ResponseEntity<Room> updateRoom(@Valid @RequestBody Room room, @PathVariable long id){
             Room r = this.roomService.updateRoom(room,id);
             return ResponseEntity.ok(r);
-        }catch (Exception e){
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+
     }
 }

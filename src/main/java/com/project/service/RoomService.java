@@ -1,6 +1,6 @@
-package com.project.services;
+package com.project.service;
 
-import com.project.dao.RoomRepository;
+import com.project.repository.RoomRepository;
 import com.project.entities.Room;
 import com.project.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,31 +20,22 @@ public class RoomService {
     }
 
     public List<Room> getAllRooms(){
-        List<Room> rooms = this.roomRepository.findAll();
+        return this.roomRepository.findAll();
 
-        for(Room room: rooms){
-
-            if(room.getType() != null){
-                room.setType(room.getType().toUpperCase());
-            }
-            if(room.getStatus()!= null){
-                room.setStatus(room.getStatus().toUpperCase());
-            }
-        }
-        return rooms;
     }
 
     public Room getRoomById(long id){
             return this.roomRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Room not found"));
     }
 
-    public Room addRoom(Room room){
-        return this.roomRepository.save(room);
+    public List<Room> addRoom(List<Room> rooms){
+        return this.roomRepository.saveAll(rooms);
     }
 
     public void deleteRoom(long id){
        Room room = roomRepository.findById(id)
                .orElseThrow(()->new ResourceNotFoundException("Room not found"));
+       roomRepository.delete(room);
     }
 
     public void deleteAll() {
@@ -52,8 +43,12 @@ public class RoomService {
     }
 
     public Room updateRoom(Room room,long id){
-        room.setId(id);
-        return this.roomRepository.save(room);
+        Room existingRoom = roomRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        existingRoom.setRoomNumber(room.getRoomNumber());
+        existingRoom.setType(room.getType());
+        existingRoom.setStatus(room.getStatus());
+        return this.roomRepository.save(existingRoom);
     }
 
 
