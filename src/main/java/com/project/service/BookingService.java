@@ -1,5 +1,6 @@
 package com.project.service;
 
+import com.project.enums.BookingStatus;
 import com.project.enums.RoomStatus;
 import com.project.exception.InvalidBookingDateException;
 import com.project.exception.RoomUnavailableException;
@@ -14,6 +15,7 @@ import com.project.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -46,64 +48,157 @@ public class BookingService {
     @Transactional
     public Booking addBooking(BookingRequestDto dto){
 
+        // VALIDATE DATES
+        if(!dto.getCheckOut().isAfter(dto.getCheckIn())){
+            throw new InvalidBookingDateException(
+                    "Check-out must be after check-in");
+        }
+        // PREVENT PAST BOOKINGS
+        if(dto.getCheckIn().isBefore(LocalDate.now())){
+            throw new InvalidBookingDateException(
+                    "Check-in cannot be in the past");
+        }
 
+        // FIND GUEST
         Guest guest = guestRepository
                 .findById(dto.getGuestId())
-                .orElseThrow(() -> new ResourceNotFoundException("Guest not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Guest not found"));
 
+        // FIND ROOM
         Room room = roomRepository
                 .findById(dto.getRoomId())
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
-        if(room.getStatus()==RoomStatus.BOOKED){
-            throw new RoomUnavailableException(("Room Already Booked"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found"));
+
+        // CHECK ROOM OPERATIONAL STATUS
+        if(room.getStatus() != RoomStatus.AVAILABLE){
+            throw new RoomUnavailableException(
+                    "Room is not available for booking");
         }
+
+        // CHECK DATE OVERLAP CONFLICTS
+        List<Booking> conflicts =
+                bookingRepository.findConflictingBookings(
+                        dto.getRoomId(),
+                        dto.getCheckIn(),
+                        dto.getCheckOut()
+                );
+
+        if(!conflicts.isEmpty()){
+            throw new RoomUnavailableException(
+                    "Room already booked for selected dates");
+        }
+
+        // CREATE BOOKING
         Booking booking = new Booking();
 
         booking.setGuest(guest);
         booking.setRoom(room);
-        if(dto.getCheckOut().isBefore(dto.getCheckIn())){
-            throw new InvalidBookingDateException("Check-out cannot be before check-in");
-        }
         booking.setCheckIn(dto.getCheckIn());
         booking.setCheckOut(dto.getCheckOut());
+        booking.setStatus(BookingStatus.CONFIRMED);
 
-        room.setStatus(RoomStatus.BOOKED);
-        roomRepository.save(room);
+        // SAVE BOOKING
         return bookingRepository.save(booking);
     }
+    @Transactional
+    public void cancelAllBookings(){
 
-    public void deleteAll(){
-        this.bookingRepository.deleteAll();
-    }
-    public void deleteById(long id){
-       Booking booking = bookingRepository.findById(id)
-               .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-       Room room = booking.getRoom();
-       room.setStatus(RoomStatus.AVAILABLE);
-       roomRepository.save(room);
-       bookingRepository.delete(booking);
+        List<Booking> bookings = bookingRepository.findAll();
+
+        for(Booking booking : bookings){
+            booking.setStatus(BookingStatus.CANCELLED);
+        }
+
+        bookingRepository.saveAll(bookings);
     }
     @Transactional
-    public Booking updateBooking(BookingRequestDto dto,long id){
-        Booking existingBooking = bookingRepository.findById(id)
-                .orElseThrow(()-> new ResourceNotFoundException("Booking not found"));
-        Guest guest = guestRepository.findById(dto.getGuestId())
-                .orElseThrow(()-> new ResourceNotFoundException("Guest not found"));
-        Room room = roomRepository.findById(dto.getRoomId())
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
-        if(room.getStatus()== RoomStatus.BOOKED&& !existingBooking.getRoom().getId().equals(room.getId())){
-            throw new RoomUnavailableException("Room Already Booked");
+    public Booking cancelBooking(long id){
+
+        // FIND BOOKING
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Booking not found"));
+
+        // PREVENT REPEATED CANCELLATION
+        if(booking.getStatus() == BookingStatus.CANCELLED){
+            throw new RoomUnavailableException(
+                    "Booking is already cancelled");
         }
 
-        existingBooking.setGuest((guest));
-        existingBooking.setRoom(room);
-        if(dto.getCheckOut().isBefore(dto.getCheckIn())) {
-            throw new InvalidBookingDateException("Check-out cannot be before check-in");
+        // CANCEL BOOKING
+        booking.setStatus(BookingStatus.CANCELLED);
+
+        // SAVE UPDATED BOOKING
+        return bookingRepository.save(booking);
+    }
+    @Transactional
+    public Booking updateBooking(BookingRequestDto dto, long id){
+
+        // FIND EXISTING BOOKING
+        Booking existingBooking = bookingRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Booking not found"));
+        if(existingBooking.getStatus() == BookingStatus.CANCELLED){
+            throw new RoomUnavailableException(
+                    "Cancelled booking cannot be updated");
         }
+        // VALIDATE DATES
+        if(!dto.getCheckOut().isAfter(dto.getCheckIn())){
+            throw new InvalidBookingDateException(
+                    "Check-out must be after check-in");
+        }
+
+        // PREVENT PAST BOOKINGS
+        if(dto.getCheckIn().isBefore(LocalDate.now())){
+            throw new InvalidBookingDateException(
+                    "Check-in cannot be in the past");
+        }
+
+        // FIND GUEST
+        Guest guest = guestRepository.findById(dto.getGuestId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Guest not found"));
+
+        // FIND ROOM
+        Room room = roomRepository.findById(dto.getRoomId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Room not found"));
+
+        // CHECK ROOM OPERATIONAL STATUS
+        if(room.getStatus() != RoomStatus.AVAILABLE){
+            throw new RoomUnavailableException(
+                    "Room is not available for booking");
+        }
+
+        // CHECK DATE OVERLAP CONFLICTS
+        List<Booking> conflicts =
+                bookingRepository.findConflictingBookingsForUpdate(
+                        dto.getRoomId(),
+                        id,
+                        dto.getCheckIn(),
+                        dto.getCheckOut()
+                );
+
+        if(!conflicts.isEmpty()){
+            throw new RoomUnavailableException(
+                    "Room already booked for selected dates");
+        }
+
+        // UPDATE BOOKING
+        existingBooking.setGuest(guest);
+        existingBooking.setRoom(room);
         existingBooking.setCheckIn(dto.getCheckIn());
         existingBooking.setCheckOut(dto.getCheckOut());
 
-
+        // SAVE UPDATED BOOKING
         return bookingRepository.save(existingBooking);
     }
 }

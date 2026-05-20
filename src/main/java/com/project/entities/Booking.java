@@ -1,6 +1,7 @@
 package com.project.entities;
 
 
+import com.project.enums.BookingStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -33,5 +34,8 @@ public class Booking {
 
     @NotNull
     private LocalDate checkOut;
+
+    @Enumerated(EnumType.STRING)
+    private BookingStatus status;
 
 }

@@ -38,13 +38,13 @@ public class BookingController {
     }
     @DeleteMapping
     public ResponseEntity<Void> deleteAll(){
-            this.bookingService.deleteAll();
+            this.bookingService.cancelAllBookings();
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable long id){
-            this.bookingService.deleteById(id);
-            return ResponseEntity.noContent().build();
+    @DeleteMapping("/cancel/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable long id) {
+        this.bookingService.cancelBooking(id);
+        return ResponseEntity.noContent().build();
     }
     @PutMapping("/{id}")
     public ResponseEntity<Booking> updateBooking(@Valid @RequestBody BookingRequestDto dto,@PathVariable long id){
